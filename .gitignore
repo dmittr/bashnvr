@@ -2,4 +2,5 @@ bashnvr.conf
 www/*
 .htpasswd
 !www/index.php
+!www/noimage.png
 !www/.htaccess
