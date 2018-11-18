@@ -1,0 +1,16 @@
+RewriteEngine on
+RewriteBase /nvr
+
+AuthUserFile /opt/bashnvr/.htpasswd
+AuthName authorization
+AuthType Basic
+
+# Uncomment next line to allow fetching snapshots for all 
+#Require expr %{REQUEST_URI} =~ m#^/last/.*#
+
+Require valid-user
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule   ^(.*) index.php?q=$1 [QSA,L]
+

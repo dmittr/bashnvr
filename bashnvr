@@ -1,0 +1,269 @@
+#!/bin/bash
+declare -A PRESET CAM
+SELFDIR="$( cd "$(dirname "$0")" ; pwd -P )/"
+CONFIG="${SELFDIR}bashnvr.conf"
+
+########################## DEFAULT CONFIG #############################
+APPNAME="bashnvr"
+ADMINMAIL=root@localhost
+PRESETS="${SELFDIR}presets.conf"
+WWW="${SELFDIR}www/"
+STOR_BASE="/mnt/store/"
+STOR_LOAD=85
+
+SEGMENT=60
+DETECTRATE=1
+DETECTSCALE="320:240"
+DETECTSENSE=300
+DETECTFUZZ="10%"
+DETECTNICE=0
+NICE=0
+
+FFMPEG=$(which ffmpeg)
+COMPARE=$(which compare)
+########################## DEFAULT CONFIG #############################
+
+while getopts c:m: option ; do
+	case "${option}" in
+		c) CONFIG=${OPTARG};;
+		m) MONITOR=${OPTARG};;
+	esac
+done
+
+function message() {
+	#
+	echo "$(date +%Y-%m-%d@%H:%M:%S) : $1" 
+}
+function die() {
+	message $1
+	exit 1 
+}
+function log() {
+	message "$1" >> $LOG
+	test -z "${DEBUG}" || message "LOG: $1"
+}
+function include_config() {
+	#
+	test -f ${CONFIG} && . ${CONFIG} || die "Can't find config file $CONFIG"
+}
+function include_presets() {
+	#
+	test -f ${PRESETS} && . ${PRESETS} || die "Can't find presets file $PRESETS"
+}
+function create_writeable_folder() {
+	test -d $1 || mkdir -p $1
+	test -d $1 || die "Can't create dir $1"
+	test -w $1 || die "Dir $1 si not writeable"
+}
+function is_pid_alive(){
+	#
+	test -f "$1" -a -f "/proc/$(cat $1)/status" && echo 1 || echo 0
+}
+function kill_by_pidfile(){
+	#PIDFILE MESSAGE
+	test -f "$1" && kill -9 $(cat $1)
+	test -f "$1" && rm -f "$1"
+	test -z "$2" || log "$3"
+}
+function get_preset_name(){
+	cam_array=(${CAM[$1]})
+	for param in $cam_array ; do
+		case "${cam_array%=*}" in
+			PRESET) PRESET="${cam_array#*=}" ;;
+		esac
+	done
+	echo $PRESET
+}
+function store_routine(){
+	USAGE=$(df | grep -o "...% $(findmnt -n -o TARGET --target ${STOR_DIR} |sort|uniq)$" | sed -e 's/%.*//' -e 's/^ //')
+	test "$(date +%S)" == "00" && log "store_routine - ${STOR_DIR} usage = ${USAGE}%"
+
+	if [ ${USAGE} -gt ${STOR_LOAD} ] ; then
+		old_dir=$(find ${STOR_DIR} -maxdepth 3 -type d -printf '%T+ %p\n' | sort | head -n 1 | cut -d ' ' -f 2)
+		log "store_routine - ${STOR_DIR} usage > ${STOR_LOAD}, removing ${old_dir}"
+		rm -fr ${old_dir}
+	fi
+	if [ "$(date +%M)" == "59" ] ; then
+		old_dir=$(find ${DROP_DIR} -mtime +1)
+		log "store_routine - removing ${old_dir}"
+		find ${DROP_DIR} -mtime +1 -delete
+	fi
+}
+
+include_config
+include_presets
+
+SHM="/dev/shm/bashnvr/${APPNAME}/"
+STOR_DIR="${STOR_BASE}${APPNAME}/"
+DROP_DIR="${STOR_BASE}${APPNAME}-drop/"
+LOG="${SHM}main.log"
+LAST="${WWW}last/"
+
+test -x ${FFMPEG} || die "Can't find executable for FFMPEG $FFMPEG"
+test -x ${COMPARE} || die "Can't find executable for ImgaeMagick $COMPARE"
+create_writeable_folder ${SHM}
+create_writeable_folder ${STOR_DIR}
+create_writeable_folder ${DROP_DIR}
+create_writeable_folder ${LAST}
+
+PROCESS="${MONITOR:-main}"
+PIDFILE="${SHM}${PROCESS}.pid"
+
+if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
+	echo $$ > ${PIDFILE}
+
+	if [[ "${PROCESS}" == "main" ]] ; then
+		log "Staring..."
+		chcon -R -t httpd_sys_content_t ${STOR_DIR} 2>&1>/dev/null &
+		ln -s ${STOR_DIR} ${WWW}store 2>&1 > /dev/null
+		rm -f "${SHM}*.info" 2>&1 > /dev/null
+
+		trap "rm -f ${SHM}*.pid" 0 1 3 8 9 14 15
+		while true ; do
+			test -f "${PIDFILE}" || die "Lost ${PIDFILE} Shutting down now"
+			for MONITOR in "${!CAM[@]}" ; do
+				if [[ "$(is_pid_alive ${SHM}${MONITOR}.pid)" == "0" ]] ; then
+					log "Starting monitor ${MONITOR}"
+					( $0 -m ${MONITOR} 2>&1 > /dev/null ) &
+				fi
+				if [ "$(date +%M)" == "59" ] ; then
+					cat ${WWW}noimage.png > ${LAST}${MONITOR}.png
+				fi
+			done
+			store_routine
+			sleep 1
+		done
+	else
+
+		FFPID=""
+		FFPIDFILE="${SHM}${MONITOR}-ff.pid"
+		FFLOGFILE="${SHM}${MONITOR}-ff.log"
+		INFOFILE="${SHM}${MONITOR}.info"
+		REC_DIR="${SHM}${MONITOR}/"
+		REC_DIR_TMP="${REC_DIR}tmp/"
+		PRSID=$(get_preset_name ${MONITOR})
+		LASTFILESTORED=$(date +%s)
+		MAXFILEAGE=$(( ${SEGMENT} * 3 ))
+		FAILCOUNT=0
+
+		test -f ${FFLOGFILE} && mv ${FFLOGFILE}.old
+		test -d ${REC_DIR_TMP} && rm -fr ${REC_DIR_TMP}
+		test -f ${FFPIDFILE} && kill_by_pidfile ${FFPIDFILE}
+		SENSE=${DETECTSENSE}
+		RATE=${DETECTRATE}
+		SCALE=${DETECTSCALE}
+		FUZZ=${DETECTFUZZ}
+		DNICE=${DETECTNICE}
+		while read -r param ; do
+		    key="${param%%=*}"
+			value="${param#*=}"
+			case "${key}" in
+				SEGMENT) SEGMENT=${value} ;;
+				AUTH) AUTH=${value} ;;
+				IP) IP=${value} ;;
+				NICE) NICE=${value} ;;
+				DETECTRATE) RATE=${value} ;;
+				DETECTSCALE) SCALE=${value} ;;
+				DETECTSENSE) SENSE=${value} ;;
+				DETECTFUZZ) FUZZ=${value} ;;
+				DETECTNICE) DNICE=${value} ;;
+				NICE) NICE=${value} ;;
+			esac
+		done < <(echo -e "${CAM[$MONITOR]// /\\n}")
+
+		SEGMENT_75P=$(( SEGMENT * 75 / 100))
+		FFCMD="${FFMPEG} ${PRESET[$PRSID]} -f segment -strftime 1 -reset_timestamps 1 -segment_time ${SEGMENT} ${REC_DIR}${MONITOR}_%Y-%m-%d--%H-%M-%S.mkv"
+		FFCMD=${FFCMD//%IP%/$IP}
+		FFCMD=${FFCMD//%AUTH%/$AUTH}
+
+		test -z "${PRESET[$PRSID]}" && die "${MONITOR} - Empty preset $PRSID"
+		log "${MONITOR} - Starting capture. ip=${IP}, preset=${PRSID}"
+
+		while true ; do
+			test -f "${PIDFILE}" || kill_by_pidfile ${FFPIDFILE}
+			test -f "${PIDFILE}" || die "${MONITOR} - PIDFILE lost. Shutting down current capture"
+			renice -n ${DNICE} -p $$
+
+			if [[ "$(is_pid_alive $FFPIDFILE)" == "0" ]] ; then
+				create_writeable_folder ${REC_DIR}
+				( nice -n ${NICE} $FFCMD 2>&1 ) > ${FFLOGFILE} &
+				echo $! > ${FFPIDFILE}
+				log "${MONITOR} - Start capture. CMD=${FFCMD}"
+				LASTFILESTORED=$(date +%s)
+			fi
+
+			LASTFILESTORED_AGE=$(( $(date +%s) - ${LASTFILESTORED} ))
+			test ${LASTFILESTORED_AGE} -gt ${MAXFILEAGE} && kill_by_pidfile ${FFPIDFILE}
+			test ${LASTFILESTORED_AGE} -gt ${MAXFILEAGE} && log "${MONITOR} - No new files more than ${MAXFILEAGE} sec. Restarting capture."
+			test ${LASTFILESTORED_AGE} -gt ${MAXFILEAGE} && FAILCOUNT=$(( $FAILCOUNT + 1 ))
+			if [ ${FAILCOUNT} -gt 5 ] ; then
+				cat ${FFLOGFILE} | mail -s "Problem with ${MONITOR}" ${ADMINMAIL} 
+				sleep 30
+				die "${MONITOR} - Capture too bad!"
+			fi
+
+			CURRENT=""
+			CURRENT_FD=""
+			test -f "${FFPIDFILE}" -a -d "/proc/$(cat ${FFPIDFILE})/fd" && CURRENT_FD=$(readlink /proc/$(cat ${FFPIDFILE})/fd/* | grep ${REC_DIR})
+			test -z "${CURRENT_FD}" || CURRENT=$(basename $CURRENT_FD)
+
+			for video_file in $(ls ${REC_DIR}) ; do
+				if [[ "${video_file}" != "${CURRENT}" && "${video_file}" != "tmp" ]] ; then
+					video="${REC_DIR}${video_file}"
+					rm -fr "${REC_DIR_TMP}" 2>&1 > /dev/null
+					create_writeable_folder ${REC_DIR_TMP}
+					log "${MONITOR} - processing $video"
+
+					ANALYZESTART=$(date +%s)					
+
+					nice -n ${DNICE} ${FFMPEG} -loglevel fatal -i ${video} -vf "fps=${RATE},scale=${SCALE}" ${REC_DIR_TMP}%d.png
+					test -f ${REC_DIR_TMP}1.png && cp ${REC_DIR_TMP}1.png ${LAST}${MONITOR}.png
+					imgcount=0
+					imgdiffmax=0
+					imgframemax=0
+					previmg=""
+					img=""
+					for img in $(ls -r -t ${REC_DIR_TMP}*.png ) ; do
+						if [ "${previmg}" != "" ] ; then
+							imgdiff=$(nice -n ${DNICE} ${COMPARE} -fuzz ${FUZZ} -metric AE ${previmg} ${img} null: 2>&1 >/dev/null)
+							if [ "${imgdiff}" -gt "${imgdiffmax}" ] ; then
+								imgdiffmax=$imgdiff
+								imgframemax=$imgcount
+							fi
+							previmg="${img}"
+							imgcount=$((imgcount + 1))
+						else
+							previmg="${img}"
+						fi
+					done
+					test -f ${REC_DIR_TMP}${imgframemax}.png && cp ${REC_DIR_TMP}${imgframemax}.png ${REC_DIR_TMP}${video_file}.png
+					nice -n ${DNICE} ${FFMPEG} -framerate 10 -i ${REC_DIR_TMP}%d.png ${REC_DIR_TMP}${video_file}.gif > /dev/null 2>&1
+					test -f ${previmg} && cp ${previmg} ${LAST}${MONITOR}.png
+					videodate=$(stat -c %Z ${video})
+					if [ ${imgdiffmax} -gt ${SENSE} ] ; then
+						log "Saving ${video}"
+						STOR_SEGMENT="${STOR_DIR}${MONITOR}/$(date "+%Y-%m/%d/%H/" -d @${videodate})"
+						LASTFILESTORED=$(date +%s)
+					else
+						log "Drop ${video}. maxdiff=${imgdiffmax} frames=${imgcount}"
+						STOR_SEGMENT="${DROP_DIR}${MONITOR}/$(date "+%Y-%m/%d/%H/" -d @${videodate})"
+						LASTFILESTORED=$(date +%s)
+					fi
+					create_writeable_folder ${STOR_SEGMENT} 
+					test -f ${video} && mv ${video} ${STOR_SEGMENT}
+					test -f ${REC_DIR_TMP}${video_file}.gif && mv ${REC_DIR_TMP}${video_file}.gif ${STOR_SEGMENT}
+					test -f ${REC_DIR_TMP}${video_file}.png && mv ${REC_DIR_TMP}${video_file}.png ${STOR_SEGMENT}
+					chcon -R -t httpd_sys_content_t ${STOR_SEGMENT} 2>&1>/dev/null 
+					ANALYZESTOP=$(date +%s)
+					ANALYZEDIFF=$(( $ANALYZESTOP - $ANALYZESTART ))
+					log "${MONITOR} - processing finished in ${ANALYZEDIFF} sec."
+					test ${ANALYZEDIFF} -lt ${SEGMENT_75P} && DNICE=$(($DNICE + 1))
+					test ${ANALYZEDIFF} -gt ${SEGMENT_75P} && DNICE=$(($DNICE - 1))
+					test ${DNICE} -gt 19 && DNICE=19
+					test ${DNICE} -lt 0 && DNICE=0
+				fi
+				sleep 1
+			done
+		done
+	fi
+fi

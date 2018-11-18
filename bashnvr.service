@@ -1,0 +1,17 @@
+[Unit]
+Description=Simple NVR Solution
+After=multi-user.target
+# Deny to start service if it failed 5 times in 20 sec.
+StartLimitBurst=5
+StartLimitIntervalSec=20
+
+[Service]
+Type=simple
+ExecStart=/opt/bashnvr/bashnvr
+User=root
+WorkingDirectory=/opt/bashnvr/
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

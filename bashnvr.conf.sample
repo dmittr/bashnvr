@@ -1,0 +1,22 @@
+APPNAME="bashnvr"
+ADMINMAIL=root@localhost
+PRESETS="${SELFDIR}presets.conf"
+WWW="${SELFDIR}www/"
+STOR_BASE="/mnt/store/"
+STOR_LOAD=85
+
+SEGMENT=60
+DETECTRATE=1
+DETECTSCALE="320:240"
+DETECTSENSE=300
+DETECTFUZZ="10%"
+DETECTNICE=0
+NICE=0
+
+FFMPEG=$(which ffmpeg)
+COMPARE=$(which compare)
+
+CAM[komsomolsk]='PRESET=hiwatch_dsi114 IP=10.0.0.22 AUTH=admin:password'
+CAM[d4_stairs]='PRESET=falconeye_dl100p IP=192.168.6.2 AUTH=admin:password'
+CAM[d4_kitchen]='PRESET=dlink_dcs942l IP=192.168.6.3 AUTH=admin:password'
+CAM[cc_sales]='PRESET=dlink_dcs2103 IP=192.168.6.6 AUTH=admin:password'
