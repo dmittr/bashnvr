@@ -1,0 +1,5 @@
+bashnvr.conf
+www/*
+.htpasswd
+!www/index.php
+!www/.htaccess
