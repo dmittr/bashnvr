@@ -197,7 +197,7 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 			test ${LASTFILESTORED_AGE} -gt ${MAXFILEAGE} && log "${MONITOR} - No new files more than ${MAXFILEAGE} sec. Restarting capture."
 			test ${LASTFILESTORED_AGE} -gt ${MAXFILEAGE} && FAILCOUNT=$(( $FAILCOUNT + 1 ))
 			if [ ${FAILCOUNT} -gt 5 ] ; then
-				cat ${FFLOGFILE} | mail -s "Problem with ${MONITOR}" ${ADMINMAIL} 
+				echo "ffmpeg log attached" | mail -s "Problem with ${MONITOR}" -a ${FFLOGFILE} ${ADMINMAIL} 
 				sleep 30
 				die "${MONITOR} - Capture too bad!"
 			fi
