@@ -6,13 +6,14 @@ Tested on Centos-7. Copy files to your /opt folder, rename sample conf file and 
 
 ##Under the hood
 
-Long story short - ffmpeg start to record 60s files from rtsp (or mjpeg, or whatever else) stream. Each file will be converted to 60 images and they all will be compared. If there will be enough differece - original file will be saved. 
+Long story short - ffmpeg start to record 60s files from rtsp (or mjpeg, or whatever else) stream. Each file will be converted to 60 images and they all will be compared. If there will be enough differece - original file will be saved. And you have to add www folder to your web-server configuration by yourself.
 
 
 Todo:
 
 * kind of statistics for external monitoring systems
 * pretty web-interface
+* Apache config file, maybe
 * ...
 * profit
 
