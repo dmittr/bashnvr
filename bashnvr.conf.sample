@@ -3,19 +3,30 @@ ADMINMAIL=root@localhost
 PRESETS="${SELFDIR}presets.conf"
 WWW="${SELFDIR}www/"
 STOR_BASE="/mnt/store/"
+# Desireable load of storage.
 STOR_LOAD=85
 
+
+# Segment length in seconds
 SEGMENT=60
+# FPS on detector
 DETECTRATE=1
+# Detector resolution
 DETECTSCALE="320:240"
+# Number of pixels between frames to detect motion 
 DETECTSENSE=300
+# Pixel color tolerance (find fuzz key compare man page)
 DETECTFUZZ="10%"
+# Initial nice value for detection
 DETECTNICE=0
+# Initial nice value for recording
 NICE=0
 
+# Here you can use custom versions of ffmpeg and compare.
 FFMPEG=$(which ffmpeg)
 COMPARE=$(which compare)
 
+# Look at presets.conf to find your camera or try to roll your own preset
 CAM[komsomolsk]='PRESET=hiwatch_dsi114 IP=10.0.0.22 AUTH=admin:password'
 CAM[d4_stairs]='PRESET=falconeye_dl100p IP=192.168.6.2 AUTH=admin:password'
 CAM[d4_kitchen]='PRESET=dlink_dcs942l IP=192.168.6.3 AUTH=admin:password'
