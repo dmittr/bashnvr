@@ -9,6 +9,18 @@ Tested on Centos-7. Copy files to your /opt folder, rename sample conf file and 
 Long story short - ffmpeg start to record 60s files from rtsp (or mjpeg, or whatever else) stream. Each file will be converted to 60 images and they all will be compared. If there will be enough differece - original file will be saved. And you have to add www folder to your web-server configuration by yourself.
 
 
+##Install
+
+yum install git ffmpeg ImageMagick
+cd /opt/
+git clone https://github.com/dmittr/bashnvr.git bashnvr
+cp /opt/bashnvr/bashnvr.service /etc/systemd/system/bashnvr.service
+systemctl daemon-reload
+systemctl enable bashnvr.service
+cp /opt/bashnvr/bashnvr.conf{.sample,}
+htpasswd -c /opt/bashnvr/.htpasswd my-user-name
+
+
 Todo:
 
 * kind of statistics for external monitoring systems
