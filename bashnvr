@@ -79,7 +79,7 @@ function store_routine(){
 	test "$(date +%S)" == "00" && log "store_routine - ${STOR_DIR} usage = ${USAGE}%"
 
 	if [ ${USAGE} -gt ${STOR_LOAD} ] ; then
-		old_dir=$(find ${STOR_DIR} -maxdepth 3 -type d -printf '%T+ %p\n' | sort | head -n 1 | cut -d ' ' -f 2)
+		old_dir=$(find ${STOR_DIR} -mindepth 4 -maxdepth 4 -type d -printf '%T+ %p\n' | sort | head -n 1 | cut -d ' ' -f 2)
 		log "store_routine - ${STOR_DIR} usage > ${STOR_LOAD}, removing ${old_dir}"
 		rm -fr ${old_dir}
 	fi
