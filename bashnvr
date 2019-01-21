@@ -84,9 +84,10 @@ function store_routine(){
 		rm -fr ${old_dir}
 	fi
 	if [ "$(date +%M)" == "59" ] ; then
-		old_dir=$(find ${DROP_DIR} -mtime +1)
-		log "store_routine - removing ${old_dir}"
-		find ${DROP_DIR} -mtime +1 -delete
+		old_files=$(find ${DROP_DIR} -mtime +1 -type f)
+		log "store_routine - removing ${old_files}"
+		find ${DROP_DIR} -mtime +1 -type f -delete
+		find ${DROP_DIR} -type d -empty -delete
 	fi
 }
 
