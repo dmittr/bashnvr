@@ -225,16 +225,18 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					previmg=""
 					img=""
 					for img in $(ls -r -t ${REC_DIR_TMP}*.png ) ; do
-						if [ "${previmg}" != "" ] ; then
-							imgdiff=$(nice -n ${DNICE} ${COMPARE} -fuzz ${FUZZ} -metric AE ${previmg} ${img} null: 2>&1 >/dev/null)
-							if [ "${imgdiff}" -gt "${imgdiffmax}" ] ; then
-								imgdiffmax=$imgdiff
-								imgframemax=$imgcount
+						if [ ${imgdiffmax} -lt ${SENSE} ] ; then
+							if [ "${previmg}" != "" ] ; then
+								imgdiff=$(nice -n ${DNICE} ${COMPARE} -fuzz ${FUZZ} -metric AE ${previmg} ${img} null: 2>&1 >/dev/null)
+								if [ "${imgdiff}" -gt "${imgdiffmax}" ] ; then
+									imgdiffmax=$imgdiff
+									imgframemax=$imgcount
+								fi
+								previmg="${img}"
+								imgcount=$((imgcount + 1))
+							else
+								previmg="${img}"
 							fi
-							previmg="${img}"
-							imgcount=$((imgcount + 1))
-						else
-							previmg="${img}"
 						fi
 					done
 					test -f ${REC_DIR_TMP}${imgframemax}.png && cp ${REC_DIR_TMP}${imgframemax}.png ${REC_DIR_TMP}${video_file}.png
@@ -244,12 +246,11 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					if [ ${imgdiffmax} -gt ${SENSE} ] ; then
 						log "Saving ${video}"
 						STOR_SEGMENT="${STOR_DIR}${MONITOR}/$(date "+%Y-%m/%d/%H/" -d @${videodate})"
-						LASTFILESTORED=$(date +%s)
 					else
 						log "Drop ${video}. maxdiff=${imgdiffmax} frames=${imgcount}"
 						STOR_SEGMENT="${DROP_DIR}${MONITOR}/$(date "+%Y-%m/%d/%H/" -d @${videodate})"
-						LASTFILESTORED=$(date +%s)
 					fi
+					LASTFILESTORED=$(date +%s)
 					create_writeable_folder ${STOR_SEGMENT} 
 					test -f ${video} && mv ${video} ${STOR_SEGMENT}
 					test -f ${REC_DIR_TMP}${video_file}.gif && mv ${REC_DIR_TMP}${video_file}.gif ${STOR_SEGMENT}
