@@ -151,9 +151,21 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 		test -d ${REC_DIR_TMP} && rm -fr ${REC_DIR_TMP}
 		test -f ${FFPIDFILE} && kill_by_pidfile ${FFPIDFILE}
 		SENSE=${DETECTSENSE}
+		MSENSE=${MDETECTSENSE}
+		DSENSE=${DDETECTSENSE}
+		ESENSE=${EDETECTSENSE}
+		NSENSE=${NDETECTSENSE}
 		RATE=${DETECTRATE}
-		SCALE=${DETECTSCALE}
+		MRATE=${MDETECTRATE}
+		DRATE=${DDETECTRATE}
+		ERATE=${EDETECTRATE}
+		NRATE=${NDETECTRATE}
 		FUZZ=${DETECTFUZZ}
+		MFUZZ=${MDETECTFUZZ}
+		DFUZZ=${DDETECTFUZZ}
+		EFUZZ=${EDETECTFUZZ}
+		NFUZZ=${NDETECTFUZZ}
+		SCALE=${DETECTSCALE}
 		DNICE=${DETECTNICE}
 		while read -r param ; do
 		    key="${param%%=*}"
@@ -164,13 +176,38 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				IP) IP=${value} ;;
 				NICE) NICE=${value} ;;
 				DETECTRATE) RATE=${value} ;;
+				MDETECTRATE) MRATE=${value} ;;
+				DDETECTRATE) DRATE=${value} ;;
+				EDETECTRATE) ERATE=${value} ;;
+				NDETECTRATE) NRATE=${value} ;;
 				DETECTSCALE) SCALE=${value} ;;
 				DETECTSENSE) SENSE=${value} ;;
+				MDETECTSENSE) MSENSE=${value} ;;
+				DDETECTSENSE) DSENSE=${value} ;;
+				EDETECTSENSE) ESENSE=${value} ;;
+				NDETECTSENSE) NSENSE=${value} ;;
 				DETECTFUZZ) FUZZ=${value} ;;
+				MDETECTFUZZ) MFUZZ=${value} ;;
+				DDETECTFUZZ) DFUZZ=${value} ;;
+				EDETECTFUZZ) EFUZZ=${value} ;;
+				NDETECTFUZZ) NFUZZ=${value} ;;
 				DETECTNICE) DNICE=${value} ;;
 				NICE) NICE=${value} ;;
 			esac
 		done < <(echo -e "${CAM[$MONITOR]// /\\n}")
+
+		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTRATE}" && RATE=${NDETECTRATE}
+		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTRATE}" && RATE=${MDETECTRATE}
+		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTRATE}" && RATE=${DDETECTRATE}
+		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTRATE}" && RATE=${EDETECTRATE}
+		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTSENSE}" && SENSE=${NDETECTSENSE}
+		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTSENSE}" && SENSE=${MDETECTSENSE}
+		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTSENSE}" && SENSE=${DDETECTSENSE}
+		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTSENSE}" && SENSE=${EDETECTSENSE}
+		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTFUZZ}" && FUZZ=${NDETECTFUZZ}
+		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTFUZZ}" && FUZZ=${MDETECTFUZZ}
+		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTFUZZ}" && FUZZ=${DDETECTFUZZ}
+		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTFUZZ}" && FUZZ=${EDETECTFUZZ}
 
 		SEGMENT_75P=$(( SEGMENT * 75 / 100))
 		FFCMD="${FFMPEG} ${PRESET[$PRSID]} -f segment -strftime 1 -reset_timestamps 1 -segment_time ${SEGMENT} ${REC_DIR}${MONITOR}_%Y-%m-%d--%H-%M-%S.mkv"
@@ -213,7 +250,7 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					video="${REC_DIR}${video_file}"
 					rm -fr "${REC_DIR_TMP}" 2>&1 > /dev/null
 					create_writeable_folder ${REC_DIR_TMP}
-					log "${MONITOR} - processing $video"
+					log "${MONITOR} - processing ${video}. Detection RATE=${RATE}, SCALE=${SCALE}, SENSE=${SENSE}"
 
 					ANALYZESTART=$(date +%s)					
 
