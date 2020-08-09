@@ -31,7 +31,6 @@ while getopts c:m: option ; do
 done
 
 function message() {
-	#
 	echo "$(date +%Y-%m-%d@%H:%M:%S) : $1" 
 }
 function die() {
@@ -43,11 +42,9 @@ function log() {
 	test -z "${DEBUG}" || message "LOG: $1"
 }
 function include_config() {
-	#
 	test -f ${CONFIG} && . ${CONFIG} || die "Can't find config file $CONFIG"
 }
 function include_presets() {
-	#
 	test -f ${PRESETS} && . ${PRESETS} || die "Can't find presets file $PRESETS"
 }
 function create_writeable_folder() {
@@ -56,11 +53,9 @@ function create_writeable_folder() {
 	test -w $1 || die "Dir $1 si not writeable"
 }
 function is_pid_alive(){
-	#
 	test -f "$1" -a -f "/proc/$(cat $1)/status" && echo 1 || echo 0
 }
 function kill_by_pidfile(){
-	#PIDFILE MESSAGE
 	test -f "$1" && kill -9 $(cat $1)
 	test -f "$1" && rm -f "$1"
 	test -z "$2" || log "$3"
@@ -130,6 +125,9 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				if [ "$(date +%M)" == "59" ] ; then
 					cat ${WWW}noimage.png > ${LAST}${MONITOR}.png
 				fi
+				PRSID=$(get_preset_name ${MONITOR})
+				IMG=${IMGURL[$PRSID]}
+				test -z "${IMG}" || curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${LAST}${MONITOR}.png
 			done
 			store_routine
 			sleep 1
