@@ -125,8 +125,20 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				if [ "$(date +%M)" == "59" ] ; then
 					cat ${WWW}noimage.png > ${LAST}${MONITOR}.png
 				fi
+				IP=""
+				AUTH=""
+				while read -r param ; do
+				    key="${param%%=*}"
+					value="${param#*=}"
+					case "${key}" in
+						AUTH) AUTH=${value} ;;
+						IP) IP=${value} ;;
+					esac
+				done < <(echo -e "${CAM[$MONITOR]// /\\n}")
 				PRSID=$(get_preset_name ${MONITOR})
 				IMG=${IMGURL[$PRSID]}
+				IMG=${IMG//%IP%/$IP}
+				IMG=${IMG//%AUTH%/$AUTH}
 				test -z "${IMG}" || curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${LAST}${MONITOR}.png
 			done
 			store_routine
