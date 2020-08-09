@@ -141,11 +141,11 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				IMG=${IMG//%AUTH%/$AUTH}
 				if [ ! -z "${IMG}" ] ; then
 					curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${SHM}last-${MONITOR}.jpg
-					convert -size 320x240 ${SHM}last-${MONITOR}.jpg ${LAST}${MONITOR}.png
+					sleep 1
+					convert ${SHM}last-${MONITOR}.jpg -resize 320x240 ${LAST}${MONITOR}.png
 				fi
 			done
 			store_routine
-			sleep 1
 		done
 	else
 
