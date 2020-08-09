@@ -139,7 +139,10 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				IMG=${IMGURL[$PRSID]}
 				IMG=${IMG//%IP%/$IP}
 				IMG=${IMG//%AUTH%/$AUTH}
-				test -z "${IMG}" || curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${LAST}${MONITOR}.png
+				if [ ! -z "${IMG}" ] ; then
+					curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${SHM}last-${MONITOR}
+					convert ${SHM}last-${MONITOR} ${LAST}${MONITOR}.png
+				fi
 			done
 			store_routine
 			sleep 1
