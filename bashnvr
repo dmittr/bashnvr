@@ -132,9 +132,6 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					log "Starting monitor ${MONITOR}"
 					( $0 -m ${MONITOR} 2>&1 > /dev/null ) &
 				fi
-				if [ "$(date +%M)" == "59" ] ; then
-					cat ${WWW}noimage.png > ${LAST_DIR}${MONITOR}.png
-				fi
 				IP=""
 				AUTH=""
 				while read -r param ; do
@@ -153,6 +150,9 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${SHM}last-${MONITOR}.jpg
 					sleep 1
 					convert ${SHM}last-${MONITOR}.jpg -resize 320x240 ${LAST_DIR}${MONITOR}.png
+				fi
+				if  [ ! -f ${LAST_DIR}${MONITOR}.png ] ; then
+					cat ${WWW}noimage.png > ${LAST_DIR}${MONITOR}.png
 				fi
 			done
 			store_routine
