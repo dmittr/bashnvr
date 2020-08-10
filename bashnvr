@@ -120,6 +120,7 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 		log "Staring..."
 		chcon -R -t httpd_sys_content_t ${STOR_DIR} 2>&1>/dev/null &
 		ln -s ${STOR_DIR} ${WWW}store 2>&1 > /dev/null
+		rm -fr ${WWW}last 2>&1 > /dev/null
 		ln -s ${LAST_DIR} ${WWW}last 2>&1 > /dev/null
 		rm -f "${SHM}*.info" 2>&1 > /dev/null
 
