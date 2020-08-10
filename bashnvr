@@ -151,7 +151,7 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					sleep 1
 					convert ${SHM}last-${MONITOR}.jpg -resize 320x240 ${LAST_DIR}${MONITOR}.png
 				fi
-				if  [ ! -f ${LAST_DIR}${MONITOR}.png ] ; then
+				if  [ ! -f "${LAST_DIR}${MONITOR}.png" ] ; then
 					cat ${WWW}noimage.png > ${LAST_DIR}${MONITOR}.png
 				fi
 			done
@@ -299,7 +299,6 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					done
 					test -f ${REC_DIR_TMP}${imgframemax}.png && cp ${REC_DIR_TMP}${imgframemax}.png ${REC_DIR_TMP}${video_file}.png
 					nice -n ${DNICE} ${FFMPEG} -framerate 10 -i ${REC_DIR_TMP}%d.png ${REC_DIR_TMP}${video_file}.gif > /dev/null 2>&1
-					test -f ${previmg} && cp ${previmg} ${LAST}${MONITOR}.png
 					videodate=$(stat -c %Z ${video})
 					if [ ${imgdiffmax} -gt ${SENSE} ] ; then
 						log "Saving ${video}"
