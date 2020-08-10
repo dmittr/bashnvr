@@ -23,7 +23,7 @@ setInterval(function(){
       src += '?_ts=' + new Date().getTime();
       jqt.attr('src',src);
   })
-}, 1000);
+}, 3000);
 </script>
 
     <body>
