@@ -22,6 +22,7 @@ NICE=0
 
 FFMPEG=$(which ffmpeg)
 COMPARE=$(which compare)
+CONVERT=$(which convert)
 ########################## DEFAULT CONFIG #############################
 
 while getopts c:m: option ; do
@@ -105,6 +106,7 @@ LOG="${SHM}main.log"
 
 test -x ${FFMPEG} || die "Can't find executable for FFMPEG $FFMPEG"
 test -x ${COMPARE} || die "Can't find executable for ImgaeMagick $COMPARE"
+test -x ${CONVERT} || die "Can't find executable for ImgaeMagick $CONVERT"
 create_writeable_folder ${SHM}
 create_writeable_folder ${LAST_DIR}
 create_writeable_folder ${STOR_DIR}
@@ -148,8 +150,16 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				IMG=${IMG//%AUTH%/$AUTH}
 				if [ ! -z "${IMG}" ] ; then
 					curl --connect-timeout 1 --retry 1 --url ${IMG} --output ${SHM}last-${MONITOR}.jpg
-					sleep 1
-					convert ${SHM}last-${MONITOR}.jpg -resize 320x240 ${LAST_DIR}${MONITOR}.png
+				else
+					FFSNAP="${PRESET[$PRSID]} -vframes 1 ${SHM}last-${MONITOR}.jpg"
+					FFSNAP=${FFSNAP//%IP%/$IP}
+					FFSNAP=${FFSNAP//%AUTH%/$AUTH}
+					${FFMPEG} ${FFSNAP}
+				fi
+				sleep 1
+				if [ -f "${SHM}last-${MONITOR}.jpg" ] ; then
+					${CONVERT} ${SHM}last-${MONITOR}.jpg -resize 320x240 ${LAST_DIR}${MONITOR}.png
+					rm -f ${SHM}last-${MONITOR}.jpg
 				fi
 				if  [ ! -f "${LAST_DIR}${MONITOR}.png" ] ; then
 					cat ${WWW}noimage.png > ${LAST_DIR}${MONITOR}.png
