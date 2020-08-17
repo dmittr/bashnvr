@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -A PRESET CAM
+declare -A PRESET CAM JPGURL
 SELFDIR="$( cd "$(dirname "$0")" ; pwd -P )/"
 CONFIG="${SELFDIR}bashnvr.conf"
 
@@ -154,6 +154,7 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					FFSNAP="${PRESET[$PRSID]} -vframes 1 ${SHM}last-${MONITOR}.jpg"
 					FFSNAP=${FFSNAP//%IP%/$IP}
 					FFSNAP=${FFSNAP//%AUTH%/$AUTH}
+					FFSNAP=${FFSNAP//-vcodec copy/}
 					${FFMPEG} ${FFSNAP}
 				fi
 				sleep 1
