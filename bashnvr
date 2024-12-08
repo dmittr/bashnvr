@@ -230,19 +230,6 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 			esac
 		done < <(echo -e "${CAM[$MONITOR]// /\\n}")
 
-		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTRATE}" && RATE=${NDETECTRATE}
-		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTRATE}" && RATE=${MDETECTRATE}
-		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTRATE}" && RATE=${DDETECTRATE}
-		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTRATE}" && RATE=${EDETECTRATE}
-		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTSENSE}" && SENSE=${NDETECTSENSE}
-		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTSENSE}" && SENSE=${MDETECTSENSE}
-		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTSENSE}" && SENSE=${DDETECTSENSE}
-		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTSENSE}" && SENSE=${EDETECTSENSE}
-		test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTFUZZ}" && FUZZ=${NDETECTFUZZ}
-		test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTFUZZ}" && FUZZ=${MDETECTFUZZ}
-		test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTFUZZ}" && FUZZ=${DDETECTFUZZ}
-		test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTFUZZ}" && FUZZ=${EDETECTFUZZ}
-
 		SEGMENT_75P=$(( SEGMENT * 75 / 100))
 		FFCMD="${FFMPEG} ${PRESET[$PRSID]} -f segment -strftime 1 -reset_timestamps 1 -segment_time ${SEGMENT} ${REC_DIR}${MONITOR}_%Y-%m-%d--%H-%M-%S.mkv"
 		FFCMD=${FFCMD//%IP%/$IP}
@@ -252,10 +239,12 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 		log "${MONITOR} - Starting capture. ip=${IP}, preset=${PRSID}"
 
 		while true ; do
+# We are able no restart capture if camera pidfile was removed
 			test -f "${PIDFILE}" || kill_by_pidfile ${FFPIDFILE}
 			test -f "${PIDFILE}" || die "${MONITOR} - PIDFILE lost. Shutting down current capture"
 			renice -n ${DNICE} -p $$
 
+# Checking if ffmpeg is working and not stuck
 			if [[ "$(is_pid_alive $FFPIDFILE)" == "0" ]] ; then
 				create_writeable_folder ${REC_DIR}
 				( nice -n ${NICE} $FFCMD 2>&1 ) > ${FFLOGFILE} &
@@ -274,13 +263,31 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 				die "${MONITOR} - Capture too bad!"
 			fi
 
+# Finging busy file to skip
 			CURRENT=""
 			CURRENT_FD=""
 			test -f "${FFPIDFILE}" -a -d "/proc/$(cat ${FFPIDFILE})/fd" && CURRENT_FD=$(readlink /proc/$(cat ${FFPIDFILE})/fd/* | grep ${REC_DIR})
 			test -z "${CURRENT_FD}" || CURRENT=$(basename $CURRENT_FD)
 
 			for video_file in $(ls ${REC_DIR}) ; do
+			
+# Adjust RATE, SENSE and FUZZ to current daytime
+				test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTRATE}" && RATE=${NDETECTRATE}
+				test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTRATE}" && RATE=${MDETECTRATE}
+				test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTRATE}" && RATE=${DDETECTRATE}
+				test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTRATE}" && RATE=${EDETECTRATE}
+				test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTSENSE}" && SENSE=${NDETECTSENSE}
+				test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTSENSE}" && SENSE=${MDETECTSENSE}
+				test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTSENSE}" && SENSE=${DDETECTSENSE}
+				test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTSENSE}" && SENSE=${EDETECTSENSE}
+				test $(date +%H) -ge 0 -a $(date +%H) -lt 6 -a ! -z "${NDETECTFUZZ}" && FUZZ=${NDETECTFUZZ}
+				test $(date +%H) -ge 6 -a $(date +%H) -lt 12 -a ! -z "${MDETECTFUZZ}" && FUZZ=${MDETECTFUZZ}
+				test $(date +%H) -ge 12 -a $(date +%H) -lt 18 -a ! -z "${DDETECTFUZZ}" && FUZZ=${DDETECTFUZZ}
+				test $(date +%H) -ge 18 -a $(date +%H) -lt 24 -a ! -z "${EDETECTFUZZ}" && FUZZ=${EDETECTFUZZ}
+
 				if [[ "${video_file}" != "${CURRENT}" && "${video_file}" != "tmp" ]] ; then
+
+# Cut videofile to frames and compare frames diff
 					video="${REC_DIR}${video_file}"
 					rm -fr "${REC_DIR_TMP}" 2>&1 > /dev/null
 					create_writeable_folder ${REC_DIR_TMP}
@@ -308,8 +315,12 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 							fi
 						fi
 					done
+
+# Make previews
 					test -f ${REC_DIR_TMP}${imgframemax}.png && cp ${REC_DIR_TMP}${imgframemax}.png ${REC_DIR_TMP}${video_file}.png
 					nice -n ${DNICE} ${FFMPEG} -framerate 10 -i ${REC_DIR_TMP}%d.png ${REC_DIR_TMP}${video_file}.gif > /dev/null 2>&1
+
+# Storing 
 					videodate=$(stat -c %Z ${video})
 					if [ ${imgdiffmax} -gt ${SENSE} ] ; then
 						log "Saving ${video}"
@@ -323,7 +334,11 @@ if [[ "$(is_pid_alive ${PIDFILE})" == "0" ]] ; then
 					test -f ${video} && mv ${video} ${STOR_SEGMENT}
 					test -f ${REC_DIR_TMP}${video_file}.gif && mv ${REC_DIR_TMP}${video_file}.gif ${STOR_SEGMENT}
 					test -f ${REC_DIR_TMP}${video_file}.png && mv ${REC_DIR_TMP}${video_file}.png ${STOR_SEGMENT}
-					chcon -R -t httpd_sys_content_t ${STOR_SEGMENT} 2>&1>/dev/null 
+					chcon -R -t httpd_sys_content_t ${STOR_SEGMENT} 2>&1>/dev/null
+
+# Self-control part. 
+# If Analyze time >75% of recording time - decrease nice make it bit faster. 
+# If not - increase nice to bring more resources to system  
 					ANALYZESTOP=$(date +%s)
 					ANALYZEDIFF=$(( $ANALYZESTOP - $ANALYZESTART ))
 					log "${MONITOR} - processing finished in ${ANALYZEDIFF} sec."

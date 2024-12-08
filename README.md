@@ -11,6 +11,7 @@ Long story short - ffmpeg start to record 60s files from rtsp (or mjpeg, or what
 
 ##Install
 
+```
 yum install git ffmpeg ImageMagick
 cd /opt/
 git clone https://github.com/dmittr/bashnvr.git bashnvr
@@ -19,7 +20,13 @@ systemctl daemon-reload
 systemctl enable bashnvr.service
 cp /opt/bashnvr/bashnvr.conf{.sample,}
 htpasswd -c /opt/bashnvr/.htpasswd my-user-name
+```
 
+After start check logs 
+
+```
+tail -f /dev/shm/bashnvr/bashnvr/main.log
+```
 
 Todo:
 
